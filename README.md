@@ -2,7 +2,7 @@
 <img width="350" height="350" alt="image" src="https://github.com/user-attachments/assets/73d68dbf-1ce8-4ed3-87cd-d7446a1ca8b4" />
 
 
-Unified [Starship](https://starship.rs) prompt module for Git and [Jujutsu](https://github.com/jj-vcs/jj) repositories.
+Unified [Starship](https://starship.rs) prompt module for Git and [Jujutsu](https://github.com/jj-vcs/jj) repositories that is optimized for latency.
 
 ## Installation
 
