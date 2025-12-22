@@ -10,6 +10,14 @@ use crate::config::Config;
 use crate::git::GitInfo;
 use crate::jj::JjInfo;
 
+fn format_segment(text: &str, color: &str, reset: &str, show_color: bool) -> String {
+    if show_color {
+        format!("{color}{text}{reset}")
+    } else {
+        text.to_string()
+    }
+}
+
 /// Format JJ info as prompt string
 /// Pattern: `on {symbol}{name} ({id}) [{status}]`
 pub fn format_jj(info: &JjInfo, config: &Config) -> String {
@@ -19,9 +27,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
     // "on {symbol}" prefix
     if display.show_prefix {
         out.push_str("on ");
-        out.push_str(BLUE);
-        out.push_str(&config.jj_symbol);
-        out.push_str(RESET);
+        out.push_str(&format_segment(&config.jj_symbol, BLUE, RESET, display.show_color));
     }
 
     // Name in purple (bookmark or change_id prefix)
@@ -31,9 +37,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
         .map_or(Cow::Borrowed(&info.change_id), |bm| config.truncate(bm));
 
     if display.show_name {
-        out.push_str(PURPLE);
-        out.push_str(&name);
-        out.push_str(RESET);
+        out.push_str(&format_segment(&name, PURPLE, RESET, display.show_color));
     }
 
     // ID in green - skip if same as name (deduplicate)
@@ -41,11 +45,8 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
         if !out.is_empty() {
             out.push(' ');
         }
-        out.push_str(GREEN);
-        out.push('(');
-        out.push_str(&info.change_id);
-        out.push(')');
-        out.push_str(RESET);
+        let id_text = format!("({})", &info.change_id);
+        out.push_str(&format_segment(&id_text, GREEN, RESET, display.show_color));
     }
 
     // Status indicators in red (priority: ! > ⇔ > ? > ⇡)
@@ -68,11 +69,8 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
             if !out.is_empty() {
                 out.push(' ');
             }
-            out.push_str(RED);
-            out.push('[');
-            out.push_str(&status);
-            out.push(']');
-            out.push_str(RESET);
+            let status_text = format!("[{}]", &status);
+            out.push_str(&format_segment(&status_text, RED, RESET, display.show_color));
         }
     }
 
@@ -89,9 +87,7 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
     // "on {symbol}" prefix
     if display.show_prefix {
         out.push_str("on ");
-        out.push_str(BLUE);
-        out.push_str(&config.git_symbol);
-        out.push_str(RESET);
+        out.push_str(&format_segment(&config.git_symbol, BLUE, RESET, display.show_color));
     }
 
     // Name in purple (branch or HEAD)
@@ -100,9 +96,7 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
             .branch
             .as_ref()
             .map_or(Cow::Borrowed("HEAD"), |b| config.truncate(b));
-        out.push_str(PURPLE);
-        out.push_str(&name);
-        out.push_str(RESET);
+        out.push_str(&format_segment(&name, PURPLE, RESET, display.show_color));
     }
 
     // ID in green
@@ -110,11 +104,8 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
         if !out.is_empty() {
             out.push(' ');
         }
-        out.push_str(GREEN);
-        out.push('(');
-        out.push_str(&info.head_short);
-        out.push(')');
-        out.push_str(RESET);
+        let id_text = format!("({})", &info.head_short);
+        out.push_str(&format_segment(&id_text, GREEN, RESET, display.show_color));
     }
 
     // Status indicators in red
@@ -150,11 +141,8 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
             if !out.is_empty() {
                 out.push(' ');
             }
-            out.push_str(RED);
-            out.push('[');
-            out.push_str(&status);
-            out.push(']');
-            out.push_str(RESET);
+            let status_text = format!("[{}]", &status);
+            out.push_str(&format_segment(&status_text, RED, RESET, display.show_color));
         }
     }
 
@@ -264,6 +252,37 @@ mod tests {
         assert_eq!(
             format_jj(&info, &config),
             format!("on {BLUE}{RESET}{PURPLE}very…{RESET} {GREEN}(yzxv1234){RESET}")
+        );
+    }
+
+    #[test]
+    fn test_jj_format_no_color() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            bookmark: Some("main".into()),
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: true,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            jj_symbol: Cow::Borrowed("󱗆 "),
+            git_symbol: Cow::Borrowed(" "),
+            jj_display: DisplayConfig {
+                show_prefix: true,
+                show_name: true,
+                show_id: true,
+                show_status: true,
+                show_color: false,
+            },
+            git_display: DisplayConfig::all_visible(),
+        };
+        assert_eq!(
+            format_jj(&info, &config),
+            "on 󱗆 main (yzxv1234)"
         );
     }
 

@@ -47,6 +47,38 @@ disabled = true
 disabled = true
 ```
 
+### Powerline Prompt
+
+Example configuration in a powerline prompt, for instance [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow):
+
+```toml
+format = """
+[](color_orange)\
+$os\
+$username\
+[](bg:color_yellow fg:color_orange)\
+$directory\
+[](fg:color_yellow bg:color_aqua)\
+${custom.jj}\ # <- replace $git_branch $git_status here
+[](fg:color_aqua bg:color_blue)\
+
+...
+"""
+
+[git_branch]
+disabled = true
+
+[git_status]
+disabled = true
+
+[custom.jj]
+symbol = ""
+style = "bg:color_aqua"
+format = '[[ $symbol $output ](fg:color_fg0 bg:color_aqua)]($style)'
+command = "jj-starship --no-color --no-symbol --no-jj-prefix --no-git-prefix"
+when = "jj-starship detect"
+```
+
 ## Output Format
 
 ```
@@ -83,6 +115,7 @@ on {symbol}{name} ({id}) [{status}]
 | `--id-length <N>` | Hash display length (default: 8) |
 | `--jj-symbol <S>` | JJ repo symbol (default: `󱗆 `) |
 | `--git-symbol <S>` | Git repo symbol (default: ` `) |
+| `--no-color` | Disable output styling |
 | `--no-symbol` | Disable symbol prefix |
 | `--no-jj-prefix` | Hide "on {symbol}" for JJ |
 | `--no-jj-name` | Hide bookmark name |
@@ -102,10 +135,12 @@ All options can be set via environment variables (CLI args take precedence):
 - `JJ_STARSHIP_JJ_SYMBOL`
 - `JJ_STARSHIP_GIT_SYMBOL`
 - `JJ_STARSHIP_NO_JJ_PREFIX`
+- `JJ_STARSHIP_NO_JJ_COLOR`
 - `JJ_STARSHIP_NO_JJ_NAME`
 - `JJ_STARSHIP_NO_JJ_ID`
 - `JJ_STARSHIP_NO_JJ_STATUS`
 - `JJ_STARSHIP_NO_GIT_PREFIX`
+- `JJ_STARSHIP_NO_GIT_COLOR`
 - `JJ_STARSHIP_NO_GIT_NAME`
 - `JJ_STARSHIP_NO_GIT_ID`
 - `JJ_STARSHIP_NO_GIT_STATUS`

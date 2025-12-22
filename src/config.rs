@@ -16,6 +16,7 @@ pub struct DisplayConfig {
     pub show_name: bool,
     pub show_id: bool,
     pub show_status: bool,
+    pub show_color: bool,
 }
 
 impl DisplayConfig {
@@ -25,6 +26,7 @@ impl DisplayConfig {
             show_name: true,
             show_id: true,
             show_status: true,
+            show_color: true,
         }
     }
 }
@@ -69,6 +71,7 @@ pub struct DisplayFlags {
     pub no_name: bool,
     pub no_id: bool,
     pub no_status: bool,
+    pub no_color: bool,
 }
 
 impl DisplayFlags {
@@ -78,6 +81,7 @@ impl DisplayFlags {
             show_name: !self.no_name && env::var(format!("{env_prefix}_NAME")).is_err(),
             show_id: !self.no_id && env::var(format!("{env_prefix}_ID")).is_err(),
             show_status: !self.no_status && env::var(format!("{env_prefix}_STATUS")).is_err(),
+            show_color: !self.no_color && env::var(format!("{env_prefix}_COLOR")).is_err(),
         }
     }
 }

@@ -38,13 +38,17 @@ struct Cli {
     #[arg(long, global = true)]
     id_length: Option<usize>,
 
-    /// Symbol prefix for JJ repos (default: "󰶛 ")
+    /// Symbol prefix for JJ repos (default: "󱗆")
     #[arg(long, global = true)]
     jj_symbol: Option<String>,
 
     /// Disable symbol prefix entirely
     #[arg(long, global = true)]
     no_symbol: bool,
+
+    /// Disable output styling
+    #[arg(long, global = true)]
+    no_color: bool,
 
     // JJ display flags
     /// Hide "on {symbol}" prefix for JJ repos
@@ -69,7 +73,7 @@ struct Cli {
 #[derive(Args)]
 #[allow(clippy::struct_excessive_bools)]
 struct GitArgs {
-    /// Symbol prefix for Git repos (default: " ")
+    /// Symbol prefix for Git repos (default: "")
     #[arg(long, global = true)]
     git_symbol: Option<String>,
     /// Hide "on {symbol}" prefix for Git repos
@@ -105,6 +109,7 @@ fn main() -> ExitCode {
         no_name: cli.no_jj_name,
         no_id: cli.no_jj_id,
         no_status: cli.no_jj_status,
+        no_color: cli.no_color,
     };
 
     #[cfg(feature = "git")]
@@ -115,6 +120,7 @@ fn main() -> ExitCode {
             no_name: cli.git.no_git_name,
             no_id: cli.git.no_git_id,
             no_status: cli.git.no_git_status,
+            no_color: cli.no_color,
         },
     );
     #[cfg(not(feature = "git"))]
