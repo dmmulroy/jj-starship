@@ -19,7 +19,7 @@ fn format_segment(text: &str, color: &str, show_color: bool) -> String {
 }
 
 /// Format JJ info as prompt string
-/// Pattern: `on {symbol}{name} ({id}) [{status}]`
+/// Pattern: `on {symbol}{change_id} ({bookmarks}) [{status}]`
 pub fn format_jj(info: &JjInfo, config: &Config) -> String {
     let mut out = String::with_capacity(128);
     let display = &config.jj_display;
@@ -30,23 +30,31 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
         out.push_str(&format_segment(&config.jj_symbol, BLUE, display.show_color));
     }
 
-    // Name in purple (bookmark or change_id prefix)
-    let name: Cow<str> = info
-        .bookmark
-        .as_ref()
-        .map_or(Cow::Borrowed(&info.change_id), |bm| config.truncate(bm));
-
-    if display.show_name {
-        out.push_str(&format_segment(&name, PURPLE, display.show_color));
+    // change_id in purple (controlled by show_id - it's the identifier)
+    if display.show_id {
+        out.push_str(&format_segment(&info.change_id, PURPLE, display.show_color));
     }
 
-    // ID in green - skip if same as name (deduplicate)
-    if display.show_id && *name != info.change_id {
+    // Bookmarks in parentheses (controlled by show_name - they're names/labels)
+    if display.show_name && !info.bookmarks.is_empty() {
         if !out.is_empty() {
             out.push(' ');
         }
-        let id_text = format!("({})", &info.change_id);
-        out.push_str(&format_segment(&id_text, GREEN, display.show_color));
+
+        let bookmark_strs: Vec<String> = info
+            .bookmarks
+            .iter()
+            .map(|(name, dist)| {
+                let truncated = config.truncate(name);
+                if *dist > 0 {
+                    format!("{truncated}~{dist}")
+                } else {
+                    truncated.into_owned()
+                }
+            })
+            .collect();
+        let bookmarks_text = format!("({})", bookmark_strs.join(", "));
+        out.push_str(&format_segment(&bookmarks_text, GREEN, display.show_color));
     }
 
     // Status indicators in red (priority: ! > ⇔ > ? > ⇡)
@@ -173,6 +181,7 @@ mod tests {
         Config {
             truncate_name: 0,
             id_length: 8,
+            ancestor_bookmark_depth: 10,
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -184,7 +193,7 @@ mod tests {
     fn test_jj_format_clean() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
-            bookmark: Some("main".into()),
+            bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
             conflict: false,
             divergent: false,
@@ -193,16 +202,16 @@ mod tests {
         };
         assert_eq!(
             format_jj(&info, &no_symbol_config()),
-            format!("on {BLUE}{RESET}{PURPLE}main{RESET} {GREEN}(yzxv1234){RESET}")
+            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(main){RESET}")
         );
     }
 
     #[test]
     fn test_jj_format_dirty() {
-        // When bookmark is None, name = change_id, so (change_id) is skipped (dedupe)
+        // When no bookmarks, only change_id is shown
         let info = JjInfo {
             change_id: "yzxv1234".into(),
-            bookmark: None,
+            bookmarks: vec![],
             empty_desc: true,
             conflict: true,
             divergent: false,
@@ -219,7 +228,7 @@ mod tests {
     fn test_jj_format_with_symbol() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
-            bookmark: Some("main".into()),
+            bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
             conflict: false,
             divergent: false,
@@ -229,7 +238,7 @@ mod tests {
         assert_eq!(
             format_jj(&info, &default_config()),
             format!(
-                "on {BLUE}{DEFAULT_JJ_SYMBOL}{RESET}{PURPLE}main{RESET} {GREEN}(yzxv1234){RESET}"
+                "on {BLUE}{DEFAULT_JJ_SYMBOL}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(main){RESET}"
             )
         );
     }
@@ -239,6 +248,7 @@ mod tests {
         let config = Config {
             truncate_name: 5,
             id_length: 8,
+            ancestor_bookmark_depth: 10,
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -246,7 +256,7 @@ mod tests {
         };
         let info = JjInfo {
             change_id: "yzxv1234".into(),
-            bookmark: Some("very-long-bookmark-name".into()),
+            bookmarks: vec![("very-long-bookmark-name".into(), 0)],
             empty_desc: false,
             conflict: false,
             divergent: false,
@@ -255,7 +265,58 @@ mod tests {
         };
         assert_eq!(
             format_jj(&info, &config),
-            format!("on {BLUE}{RESET}{PURPLE}very…{RESET} {GREEN}(yzxv1234){RESET}")
+            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(very…){RESET}")
+        );
+    }
+
+    #[test]
+    fn test_jj_format_ancestor_bookmark() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            bookmarks: vec![("main".into(), 3)],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: true,
+            is_synced: true,
+        };
+        assert_eq!(
+            format_jj(&info, &no_symbol_config()),
+            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(main~3){RESET}")
+        );
+    }
+
+    #[test]
+    fn test_jj_format_no_bookmarks() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            bookmarks: vec![],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        assert_eq!(
+            format_jj(&info, &no_symbol_config()),
+            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET}")
+        );
+    }
+
+    #[test]
+    fn test_jj_format_multiple_bookmarks() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            bookmarks: vec![("feature".into(), 1), ("main".into(), 2)],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        assert_eq!(
+            format_jj(&info, &no_symbol_config()),
+            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(feature~1, main~2){RESET}")
         );
     }
 
@@ -263,7 +324,7 @@ mod tests {
     fn test_jj_format_no_color() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
-            bookmark: Some("main".into()),
+            bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
             conflict: false,
             divergent: false,
@@ -273,8 +334,9 @@ mod tests {
         let config = Config {
             truncate_name: 0,
             id_length: 8,
-            jj_symbol: Cow::Borrowed("󱗆 "),
-            git_symbol: Cow::Borrowed(" "),
+            ancestor_bookmark_depth: 10,
+            jj_symbol: Cow::Borrowed("󱗆 "),
+            git_symbol: Cow::Borrowed(" "),
             jj_display: DisplayConfig {
                 show_prefix: true,
                 show_name: true,
@@ -284,7 +346,92 @@ mod tests {
             },
             git_display: DisplayConfig::all_visible(),
         };
-        assert_eq!(format_jj(&info, &config), "on 󱗆 main (yzxv1234)");
+        assert_eq!(format_jj(&info, &config), "on 󱗆 yzxv1234 (main)");
+    }
+
+    #[test]
+    fn test_jj_format_no_id_hides_change_id() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            bookmarks: vec![("main".into(), 0)],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            jj_symbol: Cow::Borrowed(""),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig {
+                show_prefix: true,
+                show_name: true,
+                show_id: false, // --no-jj-id
+                show_status: false,
+                show_color: true,
+            },
+            git_display: DisplayConfig::all_visible(),
+        };
+        // --no-jj-id hides change_id, shows only bookmarks
+        assert_eq!(
+            format_jj(&info, &config),
+            format!("on {BLUE}{RESET} {GREEN}(main){RESET}")
+        );
+    }
+
+    #[test]
+    fn test_jj_format_no_name_hides_bookmarks() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            bookmarks: vec![("main".into(), 0)],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            jj_symbol: Cow::Borrowed(""),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig {
+                show_prefix: true,
+                show_name: false, // --no-jj-name
+                show_id: true,
+                show_status: false,
+                show_color: true,
+            },
+            git_display: DisplayConfig::all_visible(),
+        };
+        // --no-jj-name hides bookmarks, shows only change_id
+        assert_eq!(
+            format_jj(&info, &config),
+            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET}")
+        );
+    }
+
+    #[test]
+    fn test_jj_format_direct_bookmark_distance_zero() {
+        // Verifies that when WC has a direct bookmark (distance 0),
+        // it shows without ~N suffix even with ancestor search enabled
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            bookmarks: vec![("main".into(), 0)], // distance 0 = directly on WC
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        assert_eq!(
+            format_jj(&info, &no_symbol_config()),
+            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(main){RESET}")
+        );
     }
 
     #[cfg(feature = "git")]

@@ -81,8 +81,28 @@ when = "jj-starship detect"
 
 ## Output Format
 
+### JJ Format
+
 ```
-on {symbol}{name} ({id}) [{status}]
+on {symbol}{change_id} ({bookmarks}) [{status}]
+```
+
+- `{change_id}` - Short change ID (hide with `--no-jj-id`)
+- `{bookmarks}` - Comma-separated bookmarks with distance, sorted by proximity (hide with `--no-jj-name`)
+  - Distance 0 (bookmark on WC): `main`
+  - Ancestor bookmark: `main~3` (3 commits behind)
+- `{status}` - Sync status based on **first/closest** bookmark only
+
+Examples:
+- `on 󱗆 yzxv1234 [?]` - No bookmarks
+- `on 󱗆 yzxv1234 (main) [?]` - On bookmark `main`
+- `on 󱗆 yzxv1234 (main~3) [?]` - 3 commits ahead of `main`
+- `on 󱗆 yzxv1234 (pr-3, pr-2~1, main~5)` - Direct + ancestor bookmarks
+
+### Git Format
+
+```
+on {symbol}{branch} ({commit}) [{status}]
 ```
 
 ### JJ Status Symbols
@@ -92,7 +112,7 @@ on {symbol}{name} ({id}) [{status}]
 | `!` | Conflict |
 | `?` | Empty description |
 | `⇔` | Divergent |
-| `⇡` | Unsynced with remote |
+| `⇡` | Current or closest bookmark unsynced with remote |
 
 ### Git Status Symbols
 
@@ -113,6 +133,7 @@ on {symbol}{name} ({id}) [{status}]
 | `--cwd <PATH>` | Override working directory |
 | `--truncate-name <N>` | Max branch/bookmark name length (0 = unlimited) |
 | `--id-length <N>` | Hash display length (default: 8) |
+| `--ancestor-bookmark-depth <N>` | Max depth to search for ancestor bookmarks (default: 10, 0 = disabled) |
 | `--jj-symbol <S>` | JJ repo symbol (default: `󱗆 `) |
 | `--git-symbol <S>` | Git repo symbol (default: ` `) |
 | `--no-color` | Disable output styling |
@@ -132,6 +153,7 @@ All options can be set via environment variables (CLI args take precedence):
 
 - `JJ_STARSHIP_TRUNCATE_NAME`
 - `JJ_STARSHIP_ID_LENGTH`
+- `JJ_STARSHIP_ANCESTOR_BOOKMARK_DEPTH`
 - `JJ_STARSHIP_JJ_SYMBOL`
 - `JJ_STARSHIP_GIT_SYMBOL`
 - `JJ_STARSHIP_NO_JJ_PREFIX`

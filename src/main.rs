@@ -38,7 +38,11 @@ struct Cli {
     #[arg(long, global = true)]
     id_length: Option<usize>,
 
-    /// Symbol prefix for JJ repos (default: "󱗆")
+    /// Max depth to search for ancestor bookmarks (0 = disabled, default: 10)
+    #[arg(long, global = true)]
+    ancestor_bookmark_depth: Option<usize>,
+
+    /// Symbol prefix for JJ repos (default: "󱗆")
     #[arg(long, global = true)]
     jj_symbol: Option<String>,
 
@@ -73,7 +77,7 @@ struct Cli {
 #[derive(Args)]
 #[allow(clippy::struct_excessive_bools)]
 struct GitArgs {
-    /// Symbol prefix for Git repos (default: "")
+    /// Symbol prefix for Git repos (default: "")
     #[arg(long, global = true)]
     git_symbol: Option<String>,
     /// Hide "on {symbol}" prefix for Git repos
@@ -129,6 +133,7 @@ fn main() -> ExitCode {
     let config = Config::new(
         cli.truncate_name,
         cli.id_length,
+        cli.ancestor_bookmark_depth,
         jj_symbol,
         git_symbol,
         cli.no_symbol,
@@ -161,7 +166,8 @@ fn run_prompt(cwd: &Path, config: &Config) -> Option<String> {
     match result.repo_type {
         RepoType::Jj | RepoType::JjColocated => {
             let repo_root = result.repo_root?;
-            let info = jj::collect(&repo_root, config.id_length).ok()?;
+            let info =
+                jj::collect(&repo_root, config.id_length, config.ancestor_bookmark_depth).ok()?;
             Some(output::format_jj(&info, config))
         }
         #[cfg(feature = "git")]

@@ -38,6 +38,8 @@ pub struct Config {
     pub truncate_name: usize,
     /// Length of `change_id/commit` hash to display
     pub id_length: usize,
+    /// Max depth to search for ancestor bookmarks (0 = disabled, default: 10)
+    pub ancestor_bookmark_depth: usize,
     /// Symbol prefix for JJ repos
     pub jj_symbol: Cow<'static, str>,
     /// Symbol prefix for Git repos
@@ -55,6 +57,7 @@ impl Default for Config {
         Self {
             truncate_name: 0, // unlimited
             id_length: 8,
+            ancestor_bookmark_depth: 10,
             jj_symbol: Cow::Borrowed(DEFAULT_JJ_SYMBOL),
             git_symbol: Cow::Borrowed(DEFAULT_GIT_SYMBOL),
             jj_display: DisplayConfig::all_visible(),
@@ -89,10 +92,11 @@ impl DisplayFlags {
 impl Config {
     /// Create config from CLI args and environment variables
     /// CLI args take precedence over env vars
-    #[allow(clippy::fn_params_excessive_bools)]
+    #[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
     pub fn new(
         truncate_name: Option<usize>,
         id_length: Option<usize>,
+        ancestor_bookmark_depth: Option<usize>,
         jj_symbol: Option<String>,
         git_symbol: Option<String>,
         no_symbol: bool,
@@ -106,6 +110,15 @@ impl Config {
         let id_length = id_length
             .or_else(|| env::var("JJ_STARSHIP_ID_LENGTH").ok()?.parse().ok())
             .unwrap_or(8);
+
+        let ancestor_bookmark_depth = ancestor_bookmark_depth
+            .or_else(|| {
+                env::var("JJ_STARSHIP_ANCESTOR_BOOKMARK_DEPTH")
+                    .ok()?
+                    .parse()
+                    .ok()
+            })
+            .unwrap_or(10);
 
         let (jj_symbol, git_symbol) = if no_symbol {
             (Cow::Borrowed(""), Cow::Borrowed(""))
@@ -122,6 +135,7 @@ impl Config {
         Self {
             truncate_name,
             id_length,
+            ancestor_bookmark_depth,
             jj_symbol,
             git_symbol,
             jj_display: jj_flags.into_config("JJ_STARSHIP_NO_JJ"),
