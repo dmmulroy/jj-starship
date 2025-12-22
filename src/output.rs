@@ -10,9 +10,9 @@ use crate::config::Config;
 use crate::git::GitInfo;
 use crate::jj::JjInfo;
 
-fn format_segment(text: &str, color: &str, reset: &str, show_color: bool) -> String {
+fn format_segment(text: &str, color: &str, show_color: bool) -> String {
     if show_color {
-        format!("{color}{text}{reset}")
+        format!("{color}{text}{RESET}")
     } else {
         text.to_string()
     }
@@ -27,7 +27,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
     // "on {symbol}" prefix
     if display.show_prefix {
         out.push_str("on ");
-        out.push_str(&format_segment(&config.jj_symbol, BLUE, RESET, display.show_color));
+        out.push_str(&format_segment(&config.jj_symbol, BLUE, display.show_color));
     }
 
     // Name in purple (bookmark or change_id prefix)
@@ -37,7 +37,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
         .map_or(Cow::Borrowed(&info.change_id), |bm| config.truncate(bm));
 
     if display.show_name {
-        out.push_str(&format_segment(&name, PURPLE, RESET, display.show_color));
+        out.push_str(&format_segment(&name, PURPLE, display.show_color));
     }
 
     // ID in green - skip if same as name (deduplicate)
@@ -46,7 +46,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
             out.push(' ');
         }
         let id_text = format!("({})", &info.change_id);
-        out.push_str(&format_segment(&id_text, GREEN, RESET, display.show_color));
+        out.push_str(&format_segment(&id_text, GREEN, display.show_color));
     }
 
     // Status indicators in red (priority: ! > ⇔ > ? > ⇡)
@@ -70,7 +70,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
                 out.push(' ');
             }
             let status_text = format!("[{}]", &status);
-            out.push_str(&format_segment(&status_text, RED, RESET, display.show_color));
+            out.push_str(&format_segment(&status_text, RED, display.show_color));
         }
     }
 
@@ -87,7 +87,11 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
     // "on {symbol}" prefix
     if display.show_prefix {
         out.push_str("on ");
-        out.push_str(&format_segment(&config.git_symbol, BLUE, RESET, display.show_color));
+        out.push_str(&format_segment(
+            &config.git_symbol,
+            BLUE,
+            display.show_color,
+        ));
     }
 
     // Name in purple (branch or HEAD)
@@ -96,7 +100,7 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
             .branch
             .as_ref()
             .map_or(Cow::Borrowed("HEAD"), |b| config.truncate(b));
-        out.push_str(&format_segment(&name, PURPLE, RESET, display.show_color));
+        out.push_str(&format_segment(&name, PURPLE, display.show_color));
     }
 
     // ID in green
@@ -105,7 +109,7 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
             out.push(' ');
         }
         let id_text = format!("({})", &info.head_short);
-        out.push_str(&format_segment(&id_text, GREEN, RESET, display.show_color));
+        out.push_str(&format_segment(&id_text, GREEN, display.show_color));
     }
 
     // Status indicators in red
@@ -142,7 +146,7 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
                 out.push(' ');
             }
             let status_text = format!("[{}]", &status);
-            out.push_str(&format_segment(&status_text, RED, RESET, display.show_color));
+            out.push_str(&format_segment(&status_text, RED, display.show_color));
         }
     }
 
@@ -280,10 +284,7 @@ mod tests {
             },
             git_display: DisplayConfig::all_visible(),
         };
-        assert_eq!(
-            format_jj(&info, &config),
-            "on 󱗆 main (yzxv1234)"
-        );
+        assert_eq!(format_jj(&info, &config), "on 󱗆 main (yzxv1234)");
     }
 
     #[cfg(feature = "git")]
