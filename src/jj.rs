@@ -3,9 +3,11 @@
 use crate::error::{Error, Result};
 use jj_lib::config::{ConfigLayer, ConfigSource, StackedConfig};
 use jj_lib::hex_util::encode_reverse_hex;
+use jj_lib::id_prefix::IdPrefixContext;
 use jj_lib::object_id::ObjectId;
 use jj_lib::ref_name::RefName;
 use jj_lib::repo::{Repo, StoreFactories};
+use jj_lib::revset::{RevsetExtensions, UserRevsetExpression};
 use jj_lib::settings::UserSettings;
 use jj_lib::str_util::{StringMatcher, StringPattern};
 use jj_lib::workspace::{Workspace, default_working_copy_factories};
@@ -18,6 +20,8 @@ use std::sync::Arc;
 pub struct JjInfo {
     /// Short change ID (8 chars)
     pub change_id: String,
+    /// Shortest unique prefix length for `change_id`
+    pub change_id_prefix_len: usize,
     /// Bookmarks with distances: vec of (name, distance). Empty if none found.
     /// Distance 0 = directly on WC, 1+ = ancestor distance
     pub bookmarks: Vec<(String, usize)>,
@@ -52,13 +56,17 @@ fn create_user_settings() -> Result<UserSettings> {
 
 /// Find immutable head commits (trunk + tags + untracked remote bookmarks)
 /// Mirrors jj's `builtin_immutable_heads()` without revset evaluation
-fn find_immutable_heads(view: &jj_lib::view::View) -> std::collections::HashSet<jj_lib::backend::CommitId> {
+fn find_immutable_heads(
+    view: &jj_lib::view::View,
+) -> std::collections::HashSet<jj_lib::backend::CommitId> {
     use std::collections::HashSet;
 
     let mut immutable = HashSet::new();
 
     // Single pass over all remote bookmarks
-    for (symbol, remote_ref) in view.remote_bookmarks_matching(&StringMatcher::All, &StringMatcher::All) {
+    for (symbol, remote_ref) in
+        view.remote_bookmarks_matching(&StringMatcher::All, &StringMatcher::All)
+    {
         let name = symbol.name.as_str();
         let remote = symbol.remote.as_str();
 
@@ -194,6 +202,24 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
     let change_id_full = encode_reverse_hex(commit.change_id().as_bytes());
     let change_id = change_id_full[..id_length.min(change_id_full.len())].to_string();
 
+    // Compute shortest unique prefix length for change_id coloring
+    let change_id_prefix_len = {
+        let extensions = Arc::new(RevsetExtensions::default());
+        let wc_expr = UserRevsetExpression::working_copy(workspace.workspace_name().to_owned());
+        let limited_expr = wc_expr.ancestors_range(0..(ancestor_depth as u64) + 1);
+
+        let context = IdPrefixContext::new(extensions).disambiguate_within(limited_expr);
+        context
+            .populate(repo.as_ref())
+            .ok()
+            .and_then(|idx| {
+                idx.shortest_change_prefix_len(repo.as_ref(), commit.change_id())
+                    .ok()
+            })
+            .unwrap_or(id_length)
+            .min(change_id.len())
+    };
+
     // Empty description check
     let empty_desc = commit.description().trim().is_empty();
 
@@ -232,7 +258,8 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
         let mut has_remote = false;
         let mut is_synced = false;
 
-        for (symbol, remote_ref) in view.remote_bookmarks_matching(&name_matcher, &StringMatcher::All)
+        for (symbol, remote_ref) in
+            view.remote_bookmarks_matching(&name_matcher, &StringMatcher::All)
         {
             if symbol.remote.as_str() == "git" {
                 continue;
@@ -249,6 +276,7 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
 
     Ok(JjInfo {
         change_id,
+        change_id_prefix_len,
         bookmarks,
         empty_desc,
         conflict,

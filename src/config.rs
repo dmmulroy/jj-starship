@@ -17,6 +17,8 @@ pub struct DisplayConfig {
     pub show_id: bool,
     pub show_status: bool,
     pub show_color: bool,
+    /// Show unique prefix coloring for `change_id` (JJ only)
+    pub show_prefix_color: bool,
 }
 
 impl DisplayConfig {
@@ -27,6 +29,7 @@ impl DisplayConfig {
             show_id: true,
             show_status: true,
             show_color: true,
+            show_prefix_color: true,
         }
     }
 }
@@ -75,6 +78,7 @@ pub struct DisplayFlags {
     pub no_id: bool,
     pub no_status: bool,
     pub no_color: bool,
+    pub no_prefix_color: bool,
 }
 
 impl DisplayFlags {
@@ -85,6 +89,8 @@ impl DisplayFlags {
             show_id: !self.no_id && env::var(format!("{env_prefix}_ID")).is_err(),
             show_status: !self.no_status && env::var(format!("{env_prefix}_STATUS")).is_err(),
             show_color: !self.no_color && env::var(format!("{env_prefix}_COLOR")).is_err(),
+            show_prefix_color: !self.no_prefix_color
+                && env::var("JJ_STARSHIP_NO_PREFIX_COLOR").is_err(),
         }
     }
 }
