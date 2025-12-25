@@ -67,6 +67,9 @@ struct Cli {
     /// Hide [status] for JJ repos
     #[arg(long, global = true)]
     no_jj_status: bool,
+    /// Disable unique prefix coloring for `change_id`
+    #[arg(long, global = true)]
+    no_prefix_color: bool,
 
     #[cfg(feature = "git")]
     #[command(flatten)]
@@ -114,6 +117,7 @@ fn main() -> ExitCode {
         no_id: cli.no_jj_id,
         no_status: cli.no_jj_status,
         no_color: cli.no_color,
+        no_prefix_color: cli.no_prefix_color,
     };
 
     #[cfg(feature = "git")]
@@ -125,6 +129,7 @@ fn main() -> ExitCode {
             no_id: cli.git.no_git_id,
             no_status: cli.git.no_git_status,
             no_color: cli.no_color,
+            no_prefix_color: false, // N/A for git
         },
     );
     #[cfg(not(feature = "git"))]

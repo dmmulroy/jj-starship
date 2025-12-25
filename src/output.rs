@@ -4,7 +4,7 @@ use std::borrow::Cow;
 #[cfg(feature = "git")]
 use std::fmt::Write;
 
-use crate::color::{BLUE, GREEN, PURPLE, RED, RESET};
+use crate::color::{BLUE, BRIGHT_BLACK, BRIGHT_MAGENTA, GREEN, PURPLE, RED, RESET};
 use crate::config::Config;
 #[cfg(feature = "git")]
 use crate::git::GitInfo;
@@ -15,6 +15,22 @@ fn format_segment(text: &str, color: &str, show_color: bool) -> String {
         format!("{color}{text}{RESET}")
     } else {
         text.to_string()
+    }
+}
+
+/// Format `change_id` with unique prefix highlighting (matching jj log style)
+/// Prefix is bright magenta, rest is gray
+fn format_change_id(change_id: &str, prefix_len: usize, show_prefix_color: bool) -> String {
+    if !show_prefix_color {
+        return change_id.to_string();
+    }
+    let prefix_len = prefix_len.min(change_id.len());
+    let prefix = &change_id[..prefix_len];
+    let rest = &change_id[prefix_len..];
+    if rest.is_empty() {
+        format!("{BRIGHT_MAGENTA}{prefix}{RESET}")
+    } else {
+        format!("{BRIGHT_MAGENTA}{prefix}{RESET}{BRIGHT_BLACK}{rest}{RESET}")
     }
 }
 
@@ -30,9 +46,18 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
         out.push_str(&format_segment(&config.jj_symbol, BLUE, display.show_color));
     }
 
-    // change_id in purple (controlled by show_id - it's the identifier)
+    // change_id with prefix coloring (controlled by show_id)
     if display.show_id {
-        out.push_str(&format_segment(&info.change_id, PURPLE, display.show_color));
+        let use_prefix_color = display.show_color && display.show_prefix_color;
+        if use_prefix_color {
+            out.push_str(&format_change_id(
+                &info.change_id,
+                info.change_id_prefix_len,
+                true,
+            ));
+        } else {
+            out.push_str(&format_segment(&info.change_id, PURPLE, display.show_color));
+        }
     }
 
     // Bookmarks in parentheses (controlled by show_name - they're names/labels)
@@ -193,6 +218,7 @@ mod tests {
     fn test_jj_format_clean() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
             conflict: false,
@@ -202,7 +228,9 @@ mod tests {
         };
         assert_eq!(
             format_jj(&info, &no_symbol_config()),
-            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(main){RESET}")
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(main){RESET}"
+            )
         );
     }
 
@@ -211,6 +239,7 @@ mod tests {
         // When no bookmarks, only change_id is shown
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![],
             empty_desc: true,
             conflict: true,
@@ -220,7 +249,9 @@ mod tests {
         };
         assert_eq!(
             format_jj(&info, &no_symbol_config()),
-            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {RED}[!?]{RESET}")
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {RED}[!?]{RESET}"
+            )
         );
     }
 
@@ -228,6 +259,7 @@ mod tests {
     fn test_jj_format_with_symbol() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
             conflict: false,
@@ -238,7 +270,7 @@ mod tests {
         assert_eq!(
             format_jj(&info, &default_config()),
             format!(
-                "on {BLUE}{DEFAULT_JJ_SYMBOL}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(main){RESET}"
+                "on {BLUE}{DEFAULT_JJ_SYMBOL}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(main){RESET}"
             )
         );
     }
@@ -256,6 +288,7 @@ mod tests {
         };
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![("very-long-bookmark-name".into(), 0)],
             empty_desc: false,
             conflict: false,
@@ -265,7 +298,9 @@ mod tests {
         };
         assert_eq!(
             format_jj(&info, &config),
-            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(very…){RESET}")
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(very…){RESET}"
+            )
         );
     }
 
@@ -273,6 +308,7 @@ mod tests {
     fn test_jj_format_ancestor_bookmark() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 3)],
             empty_desc: false,
             conflict: false,
@@ -282,7 +318,9 @@ mod tests {
         };
         assert_eq!(
             format_jj(&info, &no_symbol_config()),
-            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(main~3){RESET}")
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(main~3){RESET}"
+            )
         );
     }
 
@@ -290,6 +328,7 @@ mod tests {
     fn test_jj_format_no_bookmarks() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![],
             empty_desc: false,
             conflict: false,
@@ -299,7 +338,7 @@ mod tests {
         };
         assert_eq!(
             format_jj(&info, &no_symbol_config()),
-            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET}")
+            format!("on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET}")
         );
     }
 
@@ -307,6 +346,7 @@ mod tests {
     fn test_jj_format_multiple_bookmarks() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![("feature".into(), 1), ("main".into(), 2)],
             empty_desc: false,
             conflict: false,
@@ -316,7 +356,9 @@ mod tests {
         };
         assert_eq!(
             format_jj(&info, &no_symbol_config()),
-            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(feature~1, main~2){RESET}")
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(feature~1, main~2){RESET}"
+            )
         );
     }
 
@@ -324,6 +366,7 @@ mod tests {
     fn test_jj_format_no_color() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
             conflict: false,
@@ -343,6 +386,7 @@ mod tests {
                 show_id: true,
                 show_status: true,
                 show_color: false,
+                show_prefix_color: true,
             },
             git_display: DisplayConfig::all_visible(),
         };
@@ -353,6 +397,7 @@ mod tests {
     fn test_jj_format_no_id_hides_change_id() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
             conflict: false,
@@ -372,6 +417,7 @@ mod tests {
                 show_id: false, // --no-jj-id
                 show_status: false,
                 show_color: true,
+                show_prefix_color: true,
             },
             git_display: DisplayConfig::all_visible(),
         };
@@ -386,6 +432,7 @@ mod tests {
     fn test_jj_format_no_name_hides_bookmarks() {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
             conflict: false,
@@ -405,13 +452,14 @@ mod tests {
                 show_id: true,
                 show_status: false,
                 show_color: true,
+                show_prefix_color: true,
             },
             git_display: DisplayConfig::all_visible(),
         };
-        // --no-jj-name hides bookmarks, shows only change_id
+        // --no-jj-name hides bookmarks, shows only change_id with prefix coloring
         assert_eq!(
             format_jj(&info, &config),
-            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET}")
+            format!("on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET}")
         );
     }
 
@@ -421,6 +469,7 @@ mod tests {
         // it shows without ~N suffix even with ancestor search enabled
         let info = JjInfo {
             change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)], // distance 0 = directly on WC
             empty_desc: false,
             conflict: false,
@@ -430,7 +479,9 @@ mod tests {
         };
         assert_eq!(
             format_jj(&info, &no_symbol_config()),
-            format!("on {BLUE}{RESET}{PURPLE}yzxv1234{RESET} {GREEN}(main){RESET}")
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(main){RESET}"
+            )
         );
     }
 
