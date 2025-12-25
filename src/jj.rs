@@ -101,7 +101,7 @@ fn find_immutable_heads(
 fn find_ancestor_bookmarks(
     repo: &Arc<jj_lib::repo::ReadonlyRepo>,
     view: &jj_lib::view::View,
-    wc_id: &jj_lib::backend::CommitId,
+    wc_parent_ids: &[jj_lib::backend::CommitId],
     max_depth: usize,
 ) -> Result<Vec<(String, usize)>> {
     use std::collections::{HashMap, HashSet, VecDeque};
@@ -113,13 +113,8 @@ fn find_ancestor_bookmarks(
     // Pre-compute immutable heads to stop traversal at trunk/tags/untracked remotes
     let immutable_heads = find_immutable_heads(view);
 
-    // Start BFS from WC commit parents
-    let wc_commit = repo
-        .store()
-        .get_commit(wc_id)
-        .map_err(|e| Error::Jj(format!("get commit: {e}")))?;
-
-    for parent_id in wc_commit.parent_ids() {
+    // Start BFS from WC commit parents (passed in to avoid reloading)
+    for parent_id in wc_parent_ids {
         queue.push_back((parent_id.clone(), 1));
     }
 
@@ -227,7 +222,7 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
     // Always search ancestors if enabled (useful for stacked PR context)
     // Ancestor bookmarks are disjoint from direct bookmarks (different commits)
     if ancestor_depth > 0 {
-        let ancestors = find_ancestor_bookmarks(&repo, view, wc_id, ancestor_depth)?;
+        let ancestors = find_ancestor_bookmarks(&repo, view, commit.parent_ids(), ancestor_depth)?;
         bookmarks.extend(ancestors);
     }
 
