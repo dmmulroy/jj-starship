@@ -207,7 +207,8 @@ fn print_version() {
     println!("commit: {commit}");
     println!("built:  {date}");
 
-    let mut features = Vec::new();
+    #[allow(unused_mut)] // mut needed when features are enabled
+    let mut features: Vec<&str> = Vec::new();
     #[cfg(feature = "git")]
     features.push("git");
 
