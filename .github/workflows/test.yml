@@ -96,7 +96,7 @@ jobs:
         if: steps.filter.outputs.nix == 'true'
         uses: DeterminateSystems/magic-nix-cache-action@v8
         with:
-          use-flakehub: disabled
+          use-flakehub: false
 
       - name: Check flake
         if: steps.filter.outputs.nix == 'true'
