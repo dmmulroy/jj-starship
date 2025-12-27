@@ -20,6 +20,7 @@ use std::process::ExitCode;
 
 #[derive(Parser)]
 #[command(name = "jj-starship")]
+#[command(version)]
 #[command(about = "Unified Git/JJ Starship prompt module")]
 #[allow(clippy::struct_excessive_bools)]
 struct Cli {
@@ -103,6 +104,8 @@ enum Command {
     Prompt,
     /// Exit 0 if in repo, 1 otherwise (for starship "when" condition)
     Detect,
+    /// Print version and build info
+    Version,
 }
 
 fn main() -> ExitCode {
@@ -162,6 +165,10 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         }
+        Command::Version => {
+            print_version();
+            ExitCode::SUCCESS
+        }
     }
 }
 
@@ -186,5 +193,27 @@ fn run_prompt(cwd: &Path, config: &Config) -> Option<String> {
         RepoType::None => None,
         // Catch disabled variants
         _ => None,
+    }
+}
+
+fn print_version() {
+    let version = env!("CARGO_PKG_VERSION");
+    let change_id = env!("JJ_CHANGE_ID");
+    let commit = env!("GIT_COMMIT");
+    let date = env!("BUILD_DATE");
+
+    println!("jj-starship {version}");
+    println!("change: {change_id}");
+    println!("commit: {commit}");
+    println!("built:  {date}");
+
+    let mut features = Vec::new();
+    #[cfg(feature = "git")]
+    features.push("git");
+
+    if features.is_empty() {
+        println!("features: none");
+    } else {
+        println!("features: {}", features.join(", "));
     }
 }
