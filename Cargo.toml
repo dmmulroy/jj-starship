@@ -4,6 +4,7 @@ version = "0.3.2"
 edition = "2024"
 rust-version = "1.85"
 description = "Unified Git/JJ Starship prompt module"
+repository = "https://github.com/dmmulroy/jj-starship"
 license = "MIT"
 
 [[bin]]
