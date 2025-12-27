@@ -1,5 +1,9 @@
 # jj-starship
-<img width="350" height="350" alt="image" src="https://github.com/user-attachments/assets/73d68dbf-1ce8-4ed3-87cd-d7446a1ca8b4" />
+
+<img width="1274" height="316" alt="CleanShot 2025-12-26 at 20 46 16@2x" src="https://github.com/user-attachments/assets/940c74fc-f572-4a26-b1ce-d27b70cc3385" />
+
+
+
 
 
 Unified [Starship](https://starship.rs) prompt module for Git and [Jujutsu](https://github.com/jj-vcs/jj) repositories that is optimized for latency.
