@@ -30,6 +30,37 @@ cd jj-starship
 cargo install --path .
 ```
 
+### Nix
+
+```sh
+# Try it
+nix run github:dmmulroy/jj-starship
+
+# Install to profile
+nix profile install github:dmmulroy/jj-starship
+
+# Minimal build (no git support, smaller closure)
+nix run github:dmmulroy/jj-starship#jj-starship-no-git
+```
+
+Or add to your flake inputs:
+
+```nix
+{
+  inputs.jj-starship.url = "github:dmmulroy/jj-starship";
+
+  outputs = { self, nixpkgs, jj-starship, ... }: {
+    # Use the overlay
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [{
+        nixpkgs.overlays = [ jj-starship.overlays.default ];
+        environment.systemPackages = [ pkgs.jj-starship ];
+      }];
+    };
+  };
+}
+```
+
 ## Feature Flags
 
 The `git` feature is enabled by default. Disable to compile out the git backend:

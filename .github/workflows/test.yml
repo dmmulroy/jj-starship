@@ -67,3 +67,37 @@ jobs:
 
       - name: Build
         run: cargo build --release
+
+  nix:
+    name: Nix Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Nix-relevant changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            nix:
+              - 'flake.nix'
+              - 'flake.lock'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'src/**'
+              - 'build.rs'
+
+      - name: Install Nix
+        if: steps.filter.outputs.nix == 'true'
+        uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Setup Nix cache
+        if: steps.filter.outputs.nix == 'true'
+        uses: DeterminateSystems/magic-nix-cache-action@v8
+        with:
+          use-flakehub: false
+
+      - name: Check flake
+        if: steps.filter.outputs.nix == 'true'
+        run: nix flake check

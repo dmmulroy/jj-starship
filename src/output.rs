@@ -1,5 +1,6 @@
 //! Output formatting for prompt strings
 
+#[cfg(feature = "git")]
 use std::borrow::Cow;
 #[cfg(feature = "git")]
 use std::fmt::Write;
