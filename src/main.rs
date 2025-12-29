@@ -47,6 +47,10 @@ struct Cli {
     #[arg(long, global = true)]
     bookmarks_display_limit: Option<usize>,
 
+    /// Prefixes to strip from bookmark names (comma-separated)
+    #[arg(long, global = true)]
+    strip_bookmark_prefix: Option<String>,
+
     /// Symbol prefix for JJ repos (default: "󱗆")
     #[arg(long, global = true)]
     jj_symbol: Option<String>,
@@ -147,6 +151,7 @@ fn main() -> ExitCode {
         cli.id_length,
         cli.ancestor_bookmark_depth,
         cli.bookmarks_display_limit,
+        cli.strip_bookmark_prefix,
         jj_symbol,
         git_symbol,
         cli.no_symbol,

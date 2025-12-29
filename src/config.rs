@@ -45,6 +45,8 @@ pub struct Config {
     pub ancestor_bookmark_depth: usize,
     /// Max bookmarks to display (0 = unlimited)
     pub bookmarks_display_limit: usize,
+    /// Prefixes to strip from bookmark names (comma-separated)
+    pub strip_bookmark_prefix: Vec<String>,
     /// Symbol prefix for JJ repos
     pub jj_symbol: Cow<'static, str>,
     /// Symbol prefix for Git repos
@@ -64,6 +66,7 @@ impl Default for Config {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 3,
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed(DEFAULT_JJ_SYMBOL),
             git_symbol: Cow::Borrowed(DEFAULT_GIT_SYMBOL),
             jj_display: DisplayConfig::all_visible(),
@@ -107,6 +110,7 @@ impl Config {
         id_length: Option<usize>,
         ancestor_bookmark_depth: Option<usize>,
         bookmarks_display_limit: Option<usize>,
+        strip_bookmark_prefix: Option<String>,
         jj_symbol: Option<String>,
         git_symbol: Option<String>,
         no_symbol: bool,
@@ -139,6 +143,11 @@ impl Config {
             })
             .unwrap_or(3);
 
+        let strip_bookmark_prefix: Vec<String> = strip_bookmark_prefix
+            .or_else(|| env::var("JJ_STARSHIP_STRIP_BOOKMARK_PREFIX").ok())
+            .map(|s| s.split(',').map(ToString::to_string).collect())
+            .unwrap_or_default();
+
         let (jj_symbol, git_symbol) = if no_symbol {
             (Cow::Borrowed(""), Cow::Borrowed(""))
         } else {
@@ -156,6 +165,7 @@ impl Config {
             id_length,
             ancestor_bookmark_depth,
             bookmarks_display_limit,
+            strip_bookmark_prefix,
             jj_symbol,
             git_symbol,
             jj_display: jj_flags.into_config("JJ_STARSHIP_NO_JJ"),
@@ -173,5 +183,15 @@ impl Config {
             let truncated: String = s.chars().take(self.truncate_name - 1).collect();
             Cow::Owned(truncated + "…")
         }
+    }
+
+    /// Strip matching prefix from bookmark name (first match wins)
+    pub fn strip_prefix<'a>(&self, s: &'a str) -> Cow<'a, str> {
+        for prefix in &self.strip_bookmark_prefix {
+            if let Some(stripped) = s.strip_prefix(prefix) {
+                return Cow::Owned(stripped.to_string());
+            }
+        }
+        Cow::Borrowed(s)
     }
 }

@@ -123,6 +123,7 @@ Examples:
 - `on 󱗆 yzxv1234 (main~3) [?]` - 3 commits ahead of `main`
 - `on 󱗆 yzxv1234 (pr-3, pr-2~1, main~5)` - Direct + ancestor bookmarks
 - `on 󱗆 yzxv1234 (main, feat~1, …+3)` - 5 bookmarks, limit 2
+- `on 󱗆 yzxv1234 (feat-x, fix-y~1)` - with `--strip-bookmark-prefix "dmmulroy/"`
 
 ### Git Format
 
@@ -160,6 +161,7 @@ on {symbol}{branch} ({commit}) [{status}]
 | `--id-length <N>` | Hash display length (default: 8) |
 | `--ancestor-bookmark-depth <N>` | Max depth to search for ancestor bookmarks (default: 10, 0 = disabled) |
 | `--bookmarks-display-limit <N>` | Max bookmarks to display (default: 3, 0 = unlimited) |
+| `--strip-bookmark-prefix <P>` | Prefixes to strip from bookmark names (comma-separated) |
 | `--jj-symbol <S>` | JJ repo symbol (default: `󱗆 `) |
 | `--git-symbol <S>` | Git repo symbol (default: ` `) |
 | `--no-color` | Disable output styling |
@@ -181,6 +183,7 @@ All options can be set via environment variables (CLI args take precedence):
 - `JJ_STARSHIP_ID_LENGTH`
 - `JJ_STARSHIP_ANCESTOR_BOOKMARK_DEPTH`
 - `JJ_STARSHIP_BOOKMARKS_DISPLAY_LIMIT`
+- `JJ_STARSHIP_STRIP_BOOKMARK_PREFIX`
 - `JJ_STARSHIP_JJ_SYMBOL`
 - `JJ_STARSHIP_GIT_SYMBOL`
 - `JJ_STARSHIP_NO_JJ_PREFIX`

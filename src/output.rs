@@ -77,7 +77,8 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
             .iter()
             .take(show_count)
             .map(|(name, dist)| {
-                let truncated = config.truncate(name);
+                let stripped = config.strip_prefix(name);
+                let truncated = config.truncate(&stripped);
                 if *dist > 0 {
                     format!("{truncated}~{dist}")
                 } else {
@@ -220,6 +221,7 @@ mod tests {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 0, // unlimited for tests
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -295,6 +297,7 @@ mod tests {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 0,
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -393,6 +396,7 @@ mod tests {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 0,
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed("󱗆 "),
             git_symbol: Cow::Borrowed(" "),
             jj_display: DisplayConfig {
@@ -425,6 +429,7 @@ mod tests {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 0,
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig {
@@ -461,6 +466,7 @@ mod tests {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 0,
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig {
@@ -589,6 +595,7 @@ mod tests {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 2,
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -620,6 +627,7 @@ mod tests {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 2,
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -656,6 +664,7 @@ mod tests {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 0,
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -690,6 +699,7 @@ mod tests {
             id_length: 8,
             ancestor_bookmark_depth: 10,
             bookmarks_display_limit: 1,
+            strip_bookmark_prefix: Vec::new(),
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -699,6 +709,109 @@ mod tests {
             format_jj(&info, &config),
             format!(
                 "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(main, …+2){RESET}"
+            )
+        );
+    }
+
+    #[test]
+    fn test_jj_format_strip_bookmark_prefix_single() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![
+                ("dmmulroy/feat-x".into(), 0),
+                ("dmmulroy/fix-y".into(), 1),
+                ("staging".into(), 2),
+            ],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0,
+            strip_bookmark_prefix: vec!["dmmulroy/".to_string()],
+            jj_symbol: Cow::Borrowed(""),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig::all_visible(),
+            git_display: DisplayConfig::all_visible(),
+        };
+        assert_eq!(
+            format_jj(&info, &config),
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(feat-x, fix-y~1, staging~2){RESET}"
+            )
+        );
+    }
+
+    #[test]
+    fn test_jj_format_strip_bookmark_prefix_multiple() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![
+                ("dmmulroy/feat-x".into(), 0),
+                ("acme-team/fix-y".into(), 1),
+                ("staging".into(), 2),
+            ],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0,
+            strip_bookmark_prefix: vec!["dmmulroy/".to_string(), "acme-team/".to_string()],
+            jj_symbol: Cow::Borrowed(""),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig::all_visible(),
+            git_display: DisplayConfig::all_visible(),
+        };
+        assert_eq!(
+            format_jj(&info, &config),
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(feat-x, fix-y~1, staging~2){RESET}"
+            )
+        );
+    }
+
+    #[test]
+    fn test_jj_format_strip_bookmark_prefix_with_truncate() {
+        // Prefix strip happens before truncation
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![("dmmulroy/very-long-feature-name".into(), 0)],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 10,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0,
+            strip_bookmark_prefix: vec!["dmmulroy/".to_string()],
+            jj_symbol: Cow::Borrowed(""),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig::all_visible(),
+            git_display: DisplayConfig::all_visible(),
+        };
+        // "very-long-feature-name" after strip → truncate to 10 → "very-long…"
+        assert_eq!(
+            format_jj(&info, &config),
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(very-long…){RESET}"
             )
         );
     }
