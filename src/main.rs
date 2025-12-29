@@ -43,6 +43,10 @@ struct Cli {
     #[arg(long, global = true)]
     ancestor_bookmark_depth: Option<usize>,
 
+    /// Max bookmarks to display (0 = unlimited, default: 3)
+    #[arg(long, global = true)]
+    bookmarks_display_limit: Option<usize>,
+
     /// Symbol prefix for JJ repos (default: "󱗆")
     #[arg(long, global = true)]
     jj_symbol: Option<String>,
@@ -142,6 +146,7 @@ fn main() -> ExitCode {
         cli.truncate_name,
         cli.id_length,
         cli.ancestor_bookmark_depth,
+        cli.bookmarks_display_limit,
         jj_symbol,
         git_symbol,
         cli.no_symbol,

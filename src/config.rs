@@ -43,6 +43,8 @@ pub struct Config {
     pub id_length: usize,
     /// Max depth to search for ancestor bookmarks (0 = disabled, default: 10)
     pub ancestor_bookmark_depth: usize,
+    /// Max bookmarks to display (0 = unlimited)
+    pub bookmarks_display_limit: usize,
     /// Symbol prefix for JJ repos
     pub jj_symbol: Cow<'static, str>,
     /// Symbol prefix for Git repos
@@ -61,6 +63,7 @@ impl Default for Config {
             truncate_name: 0, // unlimited
             id_length: 8,
             ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 3,
             jj_symbol: Cow::Borrowed(DEFAULT_JJ_SYMBOL),
             git_symbol: Cow::Borrowed(DEFAULT_GIT_SYMBOL),
             jj_display: DisplayConfig::all_visible(),
@@ -103,6 +106,7 @@ impl Config {
         truncate_name: Option<usize>,
         id_length: Option<usize>,
         ancestor_bookmark_depth: Option<usize>,
+        bookmarks_display_limit: Option<usize>,
         jj_symbol: Option<String>,
         git_symbol: Option<String>,
         no_symbol: bool,
@@ -126,6 +130,15 @@ impl Config {
             })
             .unwrap_or(10);
 
+        let bookmarks_display_limit = bookmarks_display_limit
+            .or_else(|| {
+                env::var("JJ_STARSHIP_BOOKMARKS_DISPLAY_LIMIT")
+                    .ok()?
+                    .parse()
+                    .ok()
+            })
+            .unwrap_or(3);
+
         let (jj_symbol, git_symbol) = if no_symbol {
             (Cow::Borrowed(""), Cow::Borrowed(""))
         } else {
@@ -142,6 +155,7 @@ impl Config {
             truncate_name,
             id_length,
             ancestor_bookmark_depth,
+            bookmarks_display_limit,
             jj_symbol,
             git_symbol,
             jj_display: jj_flags.into_config("JJ_STARSHIP_NO_JJ"),

@@ -67,9 +67,15 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
             out.push(' ');
         }
 
-        let bookmark_strs: Vec<String> = info
+        let total = info.bookmarks.len();
+        let limit = config.bookmarks_display_limit;
+        let show_count = if limit == 0 { total } else { limit.min(total) };
+        let hidden = total.saturating_sub(show_count);
+
+        let mut bookmark_strs: Vec<String> = info
             .bookmarks
             .iter()
+            .take(show_count)
             .map(|(name, dist)| {
                 let truncated = config.truncate(name);
                 if *dist > 0 {
@@ -79,6 +85,11 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
                 }
             })
             .collect();
+
+        if hidden > 0 {
+            bookmark_strs.push(format!("…+{hidden}"));
+        }
+
         let bookmarks_text = format!("({})", bookmark_strs.join(", "));
         out.push_str(&format_segment(&bookmarks_text, GREEN, display.show_color));
     }
@@ -208,6 +219,7 @@ mod tests {
             truncate_name: 0,
             id_length: 8,
             ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0, // unlimited for tests
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -282,6 +294,7 @@ mod tests {
             truncate_name: 5,
             id_length: 8,
             ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0,
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig::all_visible(),
@@ -379,6 +392,7 @@ mod tests {
             truncate_name: 0,
             id_length: 8,
             ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0,
             jj_symbol: Cow::Borrowed("󱗆 "),
             git_symbol: Cow::Borrowed(" "),
             jj_display: DisplayConfig {
@@ -410,6 +424,7 @@ mod tests {
             truncate_name: 0,
             id_length: 8,
             ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0,
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig {
@@ -445,6 +460,7 @@ mod tests {
             truncate_name: 0,
             id_length: 8,
             ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0,
             jj_symbol: Cow::Borrowed(""),
             git_symbol: Cow::Borrowed(""),
             jj_display: DisplayConfig {
@@ -546,6 +562,143 @@ mod tests {
             format_git(&info, &default_config()),
             format!(
                 "on {BLUE}{DEFAULT_GIT_SYMBOL}{RESET}{PURPLE}main{RESET} {GREEN}(a3b4c5d){RESET}"
+            )
+        );
+    }
+
+    #[test]
+    fn test_jj_format_bookmarks_display_limit() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![
+                ("main".into(), 0),
+                ("feat/foo".into(), 1),
+                ("feat/bar".into(), 2),
+                ("staging".into(), 3),
+                ("develop".into(), 4),
+            ],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 2,
+            jj_symbol: Cow::Borrowed(""),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig::all_visible(),
+            git_display: DisplayConfig::all_visible(),
+        };
+        assert_eq!(
+            format_jj(&info, &config),
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(main, feat/foo~1, …+3){RESET}"
+            )
+        );
+    }
+
+    #[test]
+    fn test_jj_format_bookmarks_display_limit_exact() {
+        // When limit equals count, no overflow indicator
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![("main".into(), 0), ("feat".into(), 1)],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 2,
+            jj_symbol: Cow::Borrowed(""),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig::all_visible(),
+            git_display: DisplayConfig::all_visible(),
+        };
+        assert_eq!(
+            format_jj(&info, &config),
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(main, feat~1){RESET}"
+            )
+        );
+    }
+
+    #[test]
+    fn test_jj_format_bookmarks_display_limit_zero_unlimited() {
+        // limit=0 means unlimited
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![
+                ("a".into(), 0),
+                ("b".into(), 1),
+                ("c".into(), 2),
+                ("d".into(), 3),
+            ],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0,
+            jj_symbol: Cow::Borrowed(""),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig::all_visible(),
+            git_display: DisplayConfig::all_visible(),
+        };
+        assert_eq!(
+            format_jj(&info, &config),
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(a, b~1, c~2, d~3){RESET}"
+            )
+        );
+    }
+
+    #[test]
+    fn test_jj_format_bookmarks_display_limit_one() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![
+                ("main".into(), 0),
+                ("feat".into(), 1),
+                ("other".into(), 2),
+            ],
+            empty_desc: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 1,
+            jj_symbol: Cow::Borrowed(""),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig::all_visible(),
+            git_display: DisplayConfig::all_visible(),
+        };
+        assert_eq!(
+            format_jj(&info, &config),
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {GREEN}(main, …+2){RESET}"
             )
         );
     }
