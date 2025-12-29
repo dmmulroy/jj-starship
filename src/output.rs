@@ -683,11 +683,7 @@ mod tests {
         let info = JjInfo {
             change_id: "yzxv1234".into(),
             change_id_prefix_len: 4,
-            bookmarks: vec![
-                ("main".into(), 0),
-                ("feat".into(), 1),
-                ("other".into(), 2),
-            ],
+            bookmarks: vec![("main".into(), 0), ("feat".into(), 1), ("other".into(), 2)],
             empty_desc: false,
             conflict: false,
             divergent: false,
