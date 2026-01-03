@@ -3,6 +3,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum Error {
     #[error("jj: {0}")]
     Jj(String),

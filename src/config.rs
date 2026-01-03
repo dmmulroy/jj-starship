@@ -9,6 +9,9 @@ pub const DEFAULT_JJ_SYMBOL: &str = "󱗆 ";
 pub const DEFAULT_GIT_SYMBOL: &str = " ";
 
 /// Display options for a repo type
+///
+/// Each toggle is independent - any combination is valid. Bools are clearer
+/// than bitflags for 6 orthogonal visibility settings.
 #[derive(Debug, Clone, Copy, Default)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct DisplayConfig {
@@ -75,7 +78,10 @@ impl Default for Config {
     }
 }
 
-/// CLI display flags for a repo type
+/// CLI display flags for a repo type (negated form for --no-* args)
+///
+/// Mirrors `DisplayConfig` with inverted semantics. Bools required for
+/// clap's flag parsing.
 #[derive(Debug, Clone, Copy, Default)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct DisplayFlags {
@@ -174,6 +180,7 @@ impl Config {
     }
 
     /// Truncate a string to max length, adding ellipsis if needed
+    #[must_use = "returns truncated string, does not modify input"]
     pub fn truncate<'a>(&self, s: &'a str) -> Cow<'a, str> {
         if self.truncate_name == 0 || s.chars().count() <= self.truncate_name {
             Cow::Borrowed(s)
@@ -186,6 +193,7 @@ impl Config {
     }
 
     /// Strip matching prefix from bookmark name (first match wins)
+    #[must_use = "returns stripped string, does not modify input"]
     pub fn strip_prefix<'a>(&self, s: &'a str) -> Cow<'a, str> {
         for prefix in &self.strip_bookmark_prefix {
             if let Some(stripped) = s.strip_prefix(prefix) {

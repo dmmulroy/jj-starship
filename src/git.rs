@@ -28,6 +28,7 @@ pub struct GitInfo {
 }
 
 /// Collect Git repo info from the given path
+#[must_use = "returns collected repo info, does not modify state"]
 pub fn collect(repo_root: &Path, id_length: usize) -> Result<GitInfo> {
     let repo = Repository::open(repo_root).map_err(|e| Error::Git(format!("open: {e}")))?;
 

@@ -8,11 +8,14 @@ use jj_lib::ref_name::RefName;
 use jj_lib::repo::{Repo, StoreFactories};
 use jj_lib::settings::UserSettings;
 use jj_lib::str_util::{StringMatcher, StringPattern};
-use jj_lib::workspace::{Workspace, default_working_copy_factories};
+use jj_lib::workspace::{default_working_copy_factories, Workspace};
 use std::path::Path;
 use std::sync::Arc;
 
 /// JJ repository status info
+///
+/// Bool fields are independent, orthogonal status flags - each can be
+/// true/false independently. Bitflags would add complexity without benefit.
 #[derive(Debug)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct JjInfo {
@@ -166,6 +169,7 @@ fn find_ancestor_bookmarks(
 }
 
 /// Collect JJ repo info from the given path
+#[must_use = "returns collected repo info, does not modify state"]
 pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Result<JjInfo> {
     let settings = create_user_settings()?;
 

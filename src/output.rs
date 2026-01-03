@@ -37,6 +37,7 @@ fn format_change_id(change_id: &str, prefix_len: usize, show_prefix_color: bool)
 
 /// Format JJ info as prompt string
 /// Pattern: `on {symbol}{change_id} ({bookmarks}) [{status}]`
+#[must_use = "returns formatted string, does not print"]
 pub fn format_jj(info: &JjInfo, config: &Config) -> String {
     let mut out = String::with_capacity(128);
     let display = &config.jj_display;
@@ -97,7 +98,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
 
     // Status indicators in red (priority: ! > ⇔ > ? > ⇡)
     if display.show_status {
-        let mut status = String::new();
+        let mut status = String::with_capacity(8);
         if info.conflict {
             status.push('!');
         }
@@ -126,6 +127,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
 /// Format Git info as prompt string
 /// Pattern: `on {symbol}{name} ({id}) [{status}]`
 #[cfg(feature = "git")]
+#[must_use = "returns formatted string, does not print"]
 pub fn format_git(info: &GitInfo, config: &Config) -> String {
     let mut out = String::with_capacity(128);
     let display = &config.git_display;
@@ -160,7 +162,7 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
 
     // Status indicators in red
     if display.show_status {
-        let mut status = String::new();
+        let mut status = String::with_capacity(16);
 
         // File status (order: = > + > ! > ? > ✘)
         if info.conflicted > 0 {
@@ -204,10 +206,10 @@ mod tests {
     use super::*;
     use std::borrow::Cow;
 
+    use crate::config::DisplayConfig;
     #[cfg(feature = "git")]
     use crate::config::DEFAULT_GIT_SYMBOL;
     use crate::config::DEFAULT_JJ_SYMBOL;
-    use crate::config::DisplayConfig;
 
     #[allow(dead_code)]
     fn default_config() -> Config {

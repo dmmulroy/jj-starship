@@ -18,6 +18,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+/// CLI args - bool fields are inherent to clap's flag-based interface
 #[derive(Parser)]
 #[command(name = "jj-starship")]
 #[command(version)]
@@ -85,6 +86,7 @@ struct Cli {
     git: GitArgs,
 }
 
+/// Git-specific CLI flags - bools map directly to clap's --no-* pattern
 #[cfg(feature = "git")]
 #[derive(Args)]
 #[allow(clippy::struct_excessive_bools)]
@@ -226,5 +228,204 @@ fn print_version() {
         println!("features: none");
     } else {
         println!("features: {}", features.join(", "));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn default_command_is_prompt() {
+        let cli = Cli::try_parse_from(["jj-starship"]).unwrap();
+        assert!(cli.command.is_none()); // None defaults to Prompt in main()
+    }
+
+    #[test]
+    fn explicit_prompt_subcommand() {
+        let cli = Cli::try_parse_from(["jj-starship", "prompt"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::Prompt)));
+    }
+
+    #[test]
+    fn detect_subcommand() {
+        let cli = Cli::try_parse_from(["jj-starship", "detect"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::Detect)));
+    }
+
+    #[test]
+    fn version_subcommand() {
+        let cli = Cli::try_parse_from(["jj-starship", "version"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::Version)));
+    }
+
+    #[test]
+    fn cwd_arg() {
+        let cli = Cli::try_parse_from(["jj-starship", "--cwd", "/some/path"]).unwrap();
+        assert_eq!(cli.cwd, Some(PathBuf::from("/some/path")));
+    }
+
+    #[test]
+    fn truncate_name_arg() {
+        let cli = Cli::try_parse_from(["jj-starship", "--truncate-name", "20"]).unwrap();
+        assert_eq!(cli.truncate_name, Some(20));
+    }
+
+    #[test]
+    fn id_length_arg() {
+        let cli = Cli::try_parse_from(["jj-starship", "--id-length", "12"]).unwrap();
+        assert_eq!(cli.id_length, Some(12));
+    }
+
+    #[test]
+    fn ancestor_bookmark_depth_arg() {
+        let cli = Cli::try_parse_from(["jj-starship", "--ancestor-bookmark-depth", "5"]).unwrap();
+        assert_eq!(cli.ancestor_bookmark_depth, Some(5));
+    }
+
+    #[test]
+    fn bookmarks_display_limit_arg() {
+        let cli = Cli::try_parse_from(["jj-starship", "--bookmarks-display-limit", "2"]).unwrap();
+        assert_eq!(cli.bookmarks_display_limit, Some(2));
+    }
+
+    #[test]
+    fn strip_bookmark_prefix_arg() {
+        let cli = Cli::try_parse_from(["jj-starship", "--strip-bookmark-prefix", "feature/,fix/"])
+            .unwrap();
+        assert_eq!(cli.strip_bookmark_prefix, Some("feature/,fix/".to_string()));
+    }
+
+    #[test]
+    fn jj_symbol_arg() {
+        let cli = Cli::try_parse_from(["jj-starship", "--jj-symbol", "JJ:"]).unwrap();
+        assert_eq!(cli.jj_symbol, Some("JJ:".to_string()));
+    }
+
+    #[test]
+    fn no_symbol_takes_precedence_over_jj_symbol() {
+        let cli =
+            Cli::try_parse_from(["jj-starship", "--jj-symbol", "custom", "--no-symbol"]).unwrap();
+        // no_symbol should be true, and when Config is built, symbols become empty
+        assert!(cli.no_symbol);
+        assert_eq!(cli.jj_symbol, Some("custom".to_string()));
+
+        // Verify Config respects no_symbol precedence
+        let config = Config::new(
+            None,
+            None,
+            None,
+            None,
+            None,
+            cli.jj_symbol,
+            None,
+            cli.no_symbol,
+            DisplayFlags::default(),
+            DisplayFlags::default(),
+        );
+        assert_eq!(config.jj_symbol.as_ref(), "");
+        assert_eq!(config.git_symbol.as_ref(), "");
+    }
+
+    #[test]
+    fn no_jj_prefix_flag() {
+        let cli = Cli::try_parse_from(["jj-starship", "--no-jj-prefix"]).unwrap();
+        assert!(cli.no_jj_prefix);
+    }
+
+    #[test]
+    fn no_jj_name_flag() {
+        let cli = Cli::try_parse_from(["jj-starship", "--no-jj-name"]).unwrap();
+        assert!(cli.no_jj_name);
+    }
+
+    #[test]
+    fn no_jj_id_flag() {
+        let cli = Cli::try_parse_from(["jj-starship", "--no-jj-id"]).unwrap();
+        assert!(cli.no_jj_id);
+    }
+
+    #[test]
+    fn no_jj_status_flag() {
+        let cli = Cli::try_parse_from(["jj-starship", "--no-jj-status"]).unwrap();
+        assert!(cli.no_jj_status);
+    }
+
+    #[test]
+    fn no_color_flag() {
+        let cli = Cli::try_parse_from(["jj-starship", "--no-color"]).unwrap();
+        assert!(cli.no_color);
+    }
+
+    #[test]
+    fn no_prefix_color_flag() {
+        let cli = Cli::try_parse_from(["jj-starship", "--no-prefix-color"]).unwrap();
+        assert!(cli.no_prefix_color);
+    }
+
+    #[test]
+    fn multiple_global_args() {
+        let cli = Cli::try_parse_from([
+            "jj-starship",
+            "--cwd",
+            "/test",
+            "--truncate-name",
+            "15",
+            "--id-length",
+            "6",
+            "--no-jj-prefix",
+            "--no-jj-status",
+        ])
+        .unwrap();
+        assert_eq!(cli.cwd, Some(PathBuf::from("/test")));
+        assert_eq!(cli.truncate_name, Some(15));
+        assert_eq!(cli.id_length, Some(6));
+        assert!(cli.no_jj_prefix);
+        assert!(cli.no_jj_status);
+        assert!(!cli.no_jj_name);
+        assert!(!cli.no_jj_id);
+    }
+
+    #[test]
+    fn global_args_work_with_subcommand() {
+        let cli = Cli::try_parse_from(["jj-starship", "--id-length", "4", "detect"]).unwrap();
+        assert_eq!(cli.id_length, Some(4));
+        assert!(matches!(cli.command, Some(Command::Detect)));
+    }
+
+    #[cfg(feature = "git")]
+    mod git_args {
+        use super::*;
+
+        #[test]
+        fn git_symbol_arg() {
+            let cli = Cli::try_parse_from(["jj-starship", "--git-symbol", "GIT:"]).unwrap();
+            assert_eq!(cli.git.git_symbol, Some("GIT:".to_string()));
+        }
+
+        #[test]
+        fn no_git_prefix_flag() {
+            let cli = Cli::try_parse_from(["jj-starship", "--no-git-prefix"]).unwrap();
+            assert!(cli.git.no_git_prefix);
+        }
+
+        #[test]
+        fn no_git_name_flag() {
+            let cli = Cli::try_parse_from(["jj-starship", "--no-git-name"]).unwrap();
+            assert!(cli.git.no_git_name);
+        }
+
+        #[test]
+        fn no_git_id_flag() {
+            let cli = Cli::try_parse_from(["jj-starship", "--no-git-id"]).unwrap();
+            assert!(cli.git.no_git_id);
+        }
+
+        #[test]
+        fn no_git_status_flag() {
+            let cli = Cli::try_parse_from(["jj-starship", "--no-git-status"]).unwrap();
+            assert!(cli.git.no_git_status);
+        }
     }
 }
