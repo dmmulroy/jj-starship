@@ -82,10 +82,10 @@ fn find_immutable_heads(
         // untracked: no local counterpart
         let is_untracked = view.get_local_bookmark(symbol.name).is_absent();
 
-        if is_trunk || is_untracked {
-            if let Some(id) = remote_ref.target.as_normal() {
-                immutable.insert(id.clone());
-            }
+        if (is_trunk || is_untracked)
+            && let Some(id) = remote_ref.target.as_normal()
+        {
+            immutable.insert(id.clone());
         }
     }
 
@@ -217,12 +217,12 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
     // Conflict check
     let conflict = commit.has_conflict();
 
-    // Divergent check - multiple commits for same change_id
+    // Divergent check - multiple visible commits for same change_id
     let divergent = repo
         .resolve_change_id(commit.change_id())
         .ok()
         .flatten()
-        .is_some_and(|commits| commits.len() > 1);
+        .is_some_and(|resolved| resolved.visible_with_offsets().count() > 1);
 
     // Find bookmarks - first check direct bookmarks on WC (distance 0)
     let mut bookmarks: Vec<(String, usize)> = view

@@ -1,8 +1,8 @@
 [package]
 name = "jj-starship"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.89"
 description = "Unified Git/JJ Starship prompt module"
 repository = "https://github.com/dmmulroy/jj-starship"
 license = "MIT"
@@ -17,7 +17,7 @@ git = ["dep:git2"]
 
 [dependencies]
 # JJ integration
-jj-lib = "0.36"
+jj-lib = "0.37"
 
 # Git integration
 git2 = { version = "0.19", default-features = false, optional = true }
