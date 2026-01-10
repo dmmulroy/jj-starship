@@ -88,7 +88,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Cargo.toml Cargo.lock
-          git commit -m "release: v${{ needs.validate.outputs.version }}"
+          # Allow empty commit if version already matches (idempotent releases)
+          git diff --cached --quiet || git commit -m "release: v${{ needs.validate.outputs.version }}"
           git tag "v${{ needs.validate.outputs.version }}"
           git push origin main
           git push origin "v${{ needs.validate.outputs.version }}"
