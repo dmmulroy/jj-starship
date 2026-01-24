@@ -28,6 +28,8 @@ pub struct JjInfo {
     pub bookmarks: Vec<(String, usize)>,
     /// Description is empty (needs commit message)
     pub empty_desc: bool,
+    /// Commit has no changes (tree matches parent)
+    pub empty_commit: bool,
     /// Has conflicts in tree
     pub conflict: bool,
     /// Multiple commits for same `change_id`
@@ -214,6 +216,11 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
     // Empty description check
     let empty_desc = commit.description().trim().is_empty();
 
+    // Empty commit check
+    let empty_commit = commit
+        .is_empty(repo.as_ref())
+        .map_err(|e| Error::Jj(format!("check if commit is empty: {e}")))?;
+
     // Conflict check
     let conflict = commit.has_conflict();
 
@@ -270,6 +277,7 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
         change_id_prefix_len,
         bookmarks,
         empty_desc,
+        empty_commit,
         conflict,
         divergent,
         has_remote,

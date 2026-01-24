@@ -5,7 +5,7 @@ use std::borrow::Cow;
 #[cfg(feature = "git")]
 use std::fmt::Write;
 
-use crate::color::{BLUE, BRIGHT_BLACK, BRIGHT_MAGENTA, GREEN, PURPLE, RED, RESET};
+use crate::color::{BLUE, BRIGHT_BLACK, BRIGHT_MAGENTA, GREEN, PURPLE, RED, RESET, YELLOW};
 use crate::config::Config;
 #[cfg(feature = "git")]
 use crate::git::GitInfo;
@@ -96,7 +96,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
         out.push_str(&format_segment(&bookmarks_text, GREEN, display.show_color));
     }
 
-    // Status indicators in red (priority: ! > ⇔ > ? > ⇡)
+    // Status indicators (priority: ! > ⇔ > ∅ > ⇡)
     if display.show_status {
         let mut status = String::with_capacity(8);
         if info.conflict {
@@ -105,8 +105,9 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
         if info.divergent {
             status.push('⇔');
         }
-        if info.empty_desc {
-            status.push('?');
+        // Only show ∅ for non-empty commits with empty description
+        if info.empty_desc && !info.empty_commit {
+            status.push('∅');
         }
         if info.has_remote && !info.is_synced {
             status.push('⇡');
@@ -117,7 +118,9 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
                 out.push(' ');
             }
             let status_text = format!("[{}]", &status);
-            out.push_str(&format_segment(&status_text, RED, display.show_color));
+            // Use yellow if status is only ∅, otherwise red
+            let color = if status == "∅" { YELLOW } else { RED };
+            out.push_str(&format_segment(&status_text, color, display.show_color));
         }
     }
 
@@ -238,6 +241,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: true,
@@ -259,6 +263,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![],
             empty_desc: true,
+            empty_commit: false,
             conflict: true,
             divergent: false,
             has_remote: false,
@@ -267,7 +272,7 @@ mod tests {
         assert_eq!(
             format_jj(&info, &no_symbol_config()),
             format!(
-                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {RED}[!?]{RESET}"
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {RED}[!∅]{RESET}"
             )
         );
     }
@@ -279,6 +284,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: true,
@@ -310,6 +316,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("very-long-bookmark-name".into(), 0)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -330,6 +337,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 3)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: true,
@@ -350,6 +358,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -368,6 +377,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("feature".into(), 1), ("main".into(), 2)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -388,6 +398,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: true,
@@ -421,6 +432,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -458,6 +470,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -489,6 +502,48 @@ mod tests {
     }
 
     #[test]
+    fn test_jj_format_empty_commit_empty_desc() {
+        // Empty commit with empty description: no status should be displayed
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![],
+            empty_desc: true,
+            empty_commit: true,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        assert_eq!(
+            format_jj(&info, &no_symbol_config()),
+            format!("on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET}")
+        );
+    }
+
+    #[test]
+    fn test_jj_format_non_empty_commit_empty_desc() {
+        // Non-empty commit with empty description: show ∅ in yellow
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![],
+            empty_desc: true,
+            empty_commit: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        assert_eq!(
+            format_jj(&info, &no_symbol_config()),
+            format!(
+                "on {BLUE}{RESET}{BRIGHT_MAGENTA}yzxv{RESET}{BRIGHT_BLACK}1234{RESET} {YELLOW}[∅]{RESET}"
+            )
+        );
+    }
+
+    #[test]
     fn test_jj_format_direct_bookmark_distance_zero() {
         // Verifies that when WC has a direct bookmark (distance 0),
         // it shows without ~N suffix even with ancestor search enabled
@@ -497,6 +552,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0)], // distance 0 = directly on WC
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -587,6 +643,7 @@ mod tests {
                 ("develop".into(), 4),
             ],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -619,6 +676,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0), ("feat".into(), 1)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -656,6 +714,7 @@ mod tests {
                 ("d".into(), 3),
             ],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -687,6 +746,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("main".into(), 0), ("feat".into(), 1), ("other".into(), 2)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -722,6 +782,7 @@ mod tests {
                 ("staging".into(), 2),
             ],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -757,6 +818,7 @@ mod tests {
                 ("staging".into(), 2),
             ],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
@@ -789,6 +851,7 @@ mod tests {
             change_id_prefix_len: 4,
             bookmarks: vec![("dmmulroy/very-long-feature-name".into(), 0)],
             empty_desc: false,
+            empty_commit: false,
             conflict: false,
             divergent: false,
             has_remote: false,
