@@ -14,8 +14,8 @@
     }:
     {
       overlays.default = final: prev: {
-        jj-starship = self.packages.${final.system}.jj-starship;
-        jj-starship-no-git = self.packages.${final.system}.jj-starship-no-git;
+        jj-starship = self.packages.${final.stdenv.hostPlatform.system}.jj-starship;
+        jj-starship-no-git = self.packages.${final.stdenv.hostPlatform.system}.jj-starship-no-git;
       };
     }
     // flake-utils.lib.eachDefaultSystem (
