@@ -41,11 +41,17 @@ fn format_change_id(change_id: &str, prefix_len: usize, show_prefix_color: bool)
 pub fn format_jj(info: &JjInfo, config: &Config) -> String {
     let mut out = String::with_capacity(128);
     let display = &config.jj_display;
+    let mut output_ends_with_space = false;
 
     // "on {symbol}" prefix
     if display.show_prefix {
         out.push_str("on ");
         out.push_str(&format_segment(&config.jj_symbol, BLUE, display.show_color));
+        output_ends_with_space = config
+            .jj_symbol
+            .chars()
+            .next_back()
+            .is_none_or(char::is_whitespace);
     }
 
     // change_id with prefix coloring (controlled by show_id)
@@ -60,11 +66,12 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
         } else {
             out.push_str(&format_segment(&info.change_id, PURPLE, display.show_color));
         }
+        output_ends_with_space = false;
     }
 
     // Bookmarks in parentheses (controlled by show_name - they're names/labels)
     if display.show_name && !info.bookmarks.is_empty() {
-        if !out.is_empty() {
+        if !out.is_empty() && !output_ends_with_space {
             out.push(' ');
         }
 
@@ -94,6 +101,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
 
         let bookmarks_text = format!("({})", bookmark_strs.join(", "));
         out.push_str(&format_segment(&bookmarks_text, GREEN, display.show_color));
+        output_ends_with_space = false;
     }
 
     // Status indicators (priority: ! > ⇔ > ∅ > ⇡)
@@ -114,7 +122,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
         }
 
         if !status.is_empty() {
-            if !out.is_empty() {
+            if !out.is_empty() && !output_ends_with_space {
                 out.push(' ');
             }
             let status_text = format!("[{status}]");
@@ -459,7 +467,64 @@ mod tests {
         // --no-jj-id hides change_id, shows only bookmarks
         assert_eq!(
             format_jj(&info, &config),
-            format!("on {BLUE}{RESET} {GREEN}(main){RESET}")
+            format!("on {BLUE}{RESET}{GREEN}(main){RESET}")
+        );
+    }
+
+    #[test]
+    fn test_jj_format_no_id_separates_non_empty_symbol_and_bookmark() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![("main".into(), 0)],
+            empty_desc: false,
+            empty_commit: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let config = Config {
+            truncate_name: 0,
+            id_length: 8,
+            ancestor_bookmark_depth: 10,
+            bookmarks_display_limit: 0,
+            strip_bookmark_prefix: Vec::new(),
+            jj_symbol: Cow::Borrowed("JJ"),
+            git_symbol: Cow::Borrowed(""),
+            jj_display: DisplayConfig {
+                show_prefix: true,
+                show_name: true,
+                show_id: false,
+                show_status: false,
+                show_color: false,
+                show_prefix_color: true,
+            },
+            git_display: DisplayConfig::all_visible(),
+        };
+
+        assert_eq!(format_jj(&info, &config), "on JJ (main)");
+    }
+
+    #[test]
+    fn test_jj_format_no_id_avoids_extra_space_before_status() {
+        let info = JjInfo {
+            change_id: "yzxv1234".into(),
+            change_id_prefix_len: 4,
+            bookmarks: vec![],
+            empty_desc: true,
+            empty_commit: false,
+            conflict: false,
+            divergent: false,
+            has_remote: false,
+            is_synced: true,
+        };
+        let mut config = no_symbol_config();
+        config.jj_display.show_id = false;
+
+        assert_eq!(
+            format_jj(&info, &config),
+            format!("on {BLUE}{RESET}{YELLOW}[∅]{RESET}")
         );
     }
 
