@@ -31,6 +31,16 @@ jobs:
       - name: Run tests
         run: cargo test
 
+  release-archives:
+    name: Release Archive Regression Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify archive formats and Unix executable mode
+        run: scripts/test-release-archives.sh
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

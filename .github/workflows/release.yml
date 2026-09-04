@@ -188,16 +188,7 @@ jobs:
           path: artifacts
 
       - name: Create release archives
-        run: |
-          mkdir -p release
-          for platform in artifacts/*/; do
-            name=$(basename "$platform")
-            if [[ "$name" == win32-* ]]; then
-              (cd "$platform" && zip -r "../../release/jj-starship-${name}.zip" .)
-            else
-              (cd "$platform" && tar -czvf "../../release/jj-starship-${name}.tar.gz" .)
-            fi
-          done
+        run: scripts/create-release-archives.sh
 
       - name: Generate checksums
         run: |
