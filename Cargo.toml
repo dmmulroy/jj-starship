@@ -17,7 +17,7 @@ git = ["dep:git2"]
 
 [dependencies]
 # JJ integration
-jj-lib = "0.37"
+jj-lib = "0.45.1"
 
 # Git integration
 git2 = { version = "0.20", default-features = false, optional = true }
@@ -26,6 +26,7 @@ git2 = { version = "0.20", default-features = false, optional = true }
 clap = { version = "4.5", features = ["derive"] }
 
 # Utilities
+pollster = "1.0"
 thiserror = "2.0"
 
 [profile.release]
