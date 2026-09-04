@@ -1,6 +1,6 @@
 [package]
 name = "jj-starship"
-version = "0.7.3"
+version = "0.7.4"
 edition = "2024"
 rust-version = "1.89"
 description = "Unified Git/JJ Starship prompt module"
