@@ -125,7 +125,7 @@ pub fn format_jj(info: &JjInfo, config: &Config) -> String {
             if !out.is_empty() && !output_ends_with_space {
                 out.push(' ');
             }
-            let status_text = format!("[{}]", status);
+            let status_text = format!("[{status}]");
             // Use yellow if status is only ∅, otherwise red
             let color = if status == "∅" { YELLOW } else { RED };
             out.push_str(&format_segment(&status_text, color, display.show_color));
@@ -204,7 +204,7 @@ pub fn format_git(info: &GitInfo, config: &Config) -> String {
             if !out.is_empty() {
                 out.push(' ');
             }
-            let status_text = format!("[{}]", status);
+            let status_text = format!("[{status}]");
             out.push_str(&format_segment(&status_text, RED, display.show_color));
         }
     }
