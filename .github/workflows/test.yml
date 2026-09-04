@@ -108,6 +108,8 @@ jobs:
         with:
           use-flakehub: false
 
-      - name: Check flake
+      - name: Evaluate flake
         if: steps.filter.outputs.nix == 'true'
-        run: nix flake check
+        # Building fetches hundreds of crates directly from crates.io and is
+        # unreliable on shared runners. Evaluation still catches flake wiring errors.
+        run: nix flake check --no-build
