@@ -2,13 +2,17 @@
 
 use crate::error::{Error, Result};
 use jj_lib::config::{ConfigLayer, ConfigSource, StackedConfig};
+use jj_lib::default_backend_factories::{
+    default_backend_factories, default_working_copy_factories,
+};
 use jj_lib::hex_util::encode_reverse_hex;
 use jj_lib::object_id::ObjectId;
 use jj_lib::ref_name::RefName;
-use jj_lib::repo::{Repo, StoreFactories};
+use jj_lib::repo::Repo;
 use jj_lib::settings::UserSettings;
 use jj_lib::str_util::{StringMatcher, StringPattern};
-use jj_lib::workspace::{Workspace, default_working_copy_factories};
+use jj_lib::workspace::Workspace;
+use pollster::FutureExt as _;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -178,15 +182,17 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
     let workspace = Workspace::load(
         &settings,
         repo_root,
-        &StoreFactories::default(),
+        &default_backend_factories(),
         &default_working_copy_factories(),
     )
     .map_err(|e| Error::Jj(format!("load workspace: {e}")))?;
 
-    let repo: Arc<jj_lib::repo::ReadonlyRepo> = workspace
-        .repo_loader()
-        .load_at_head()
-        .map_err(|e| Error::Jj(format!("load repo: {e}")))?;
+    let repo: Arc<jj_lib::repo::ReadonlyRepo> =
+        workspace
+            .repo_loader()
+            .load_at_head()
+            .block_on()
+            .map_err(|e| Error::Jj(format!("load repo: {e}")))?;
 
     let view = repo.view();
 
@@ -210,6 +216,7 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
     // Uses direct repo API (faster than IdPrefixContext which requires revset evaluation)
     let change_id_prefix_len = repo
         .shortest_unique_change_id_prefix_len(commit.change_id())
+        .block_on()
         .unwrap_or(id_length)
         .min(change_id.len());
 
@@ -219,6 +226,7 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
     // Empty commit check
     let empty_commit = commit
         .is_empty(repo.as_ref())
+        .block_on()
         .map_err(|e| Error::Jj(format!("check if commit is empty: {e}")))?;
 
     // Conflict check
@@ -227,6 +235,7 @@ pub fn collect(repo_root: &Path, id_length: usize, ancestor_depth: usize) -> Res
     // Divergent check - multiple visible commits for same change_id
     let divergent = repo
         .resolve_change_id(commit.change_id())
+        .block_on()
         .ok()
         .flatten()
         .is_some_and(|resolved| resolved.visible_with_offsets().count() > 1);
