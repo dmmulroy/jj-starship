@@ -109,12 +109,12 @@ on {symbol}{change_id} ({bookmarks}) [{status}]
   - Distance 0 (bookmark on WC): `main`
   - Ancestor bookmark: `main~3` (3 commits behind)
   - Overflow indicator: `…+N` when bookmarks exceed display limit
-- `{status}` - Sync status based on **first/closest** bookmark only
+- `{status}` - JJ state indicators; remote sync is based on the **first/closest** bookmark only
 
 Examples:
-- `on 󱗆 yzxv1234 [?]` - No bookmarks
-- `on 󱗆 yzxv1234 (main) [?]` - On bookmark `main`
-- `on 󱗆 yzxv1234 (main~3) [?]` - 3 commits ahead of `main`
+- `on 󱗆 yzxv1234 [∅]` - No bookmarks; the working-copy commit has file changes but no description
+- `on 󱗆 yzxv1234 (main) [∅]` - On bookmark `main` with no description
+- `on 󱗆 yzxv1234 (main~3) [∅]` - 3 commits ahead of `main` with no description
 - `on 󱗆 yzxv1234 (pr-3, pr-2~1, main~5)` - Direct + ancestor bookmarks
 - `on 󱗆 yzxv1234 (main, feat~1, …+3)` - 5 bookmarks, limit 2
 - `on 󱗆 yzxv1234 (feat-x, fix-y~1)` - with `--strip-bookmark-prefix "dmmulroy/"`
@@ -130,7 +130,7 @@ on {symbol}{branch} ({commit}) [{status}]
 | Symbol | Meaning |
 |--------|---------|
 | `!` | Conflict |
-| `?` | Empty description |
+| `∅` | Working-copy commit has file changes but no description |
 | `⇔` | Divergent |
 | `⇡` | Current or closest bookmark unsynced with remote |
 
@@ -191,9 +191,9 @@ All options can be set via environment variables (CLI args take precedence):
 - `JJ_STARSHIP_NO_GIT_ID`
 - `JJ_STARSHIP_NO_GIT_STATUS`
 
-## Powerline Prompt
+## Powerline-Style Prompt
 
-Example configuration in a powerline prompt, for instance [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow):
+Example configuration using a powerline-style Starship preset such as [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow):
 
 ```toml
 format = """
