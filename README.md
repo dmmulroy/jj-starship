@@ -92,6 +92,9 @@ To hide built-in modules when in a JJ repo:
 [git_branch]
 disabled = true
 
+[git_commit]
+disabled = true
+
 [git_status]
 disabled = true
 ```
@@ -203,13 +206,16 @@ $username\
 [](bg:color_yellow fg:color_orange)\
 $directory\
 [](fg:color_yellow bg:color_aqua)\
-${custom.jj}\ # <- replace $git_branch $git_status here
+${custom.jj}\ # <- replace $git_branch $git_commit $git_status here
 [](fg:color_aqua bg:color_blue)\
 
 ...
 """
 
 [git_branch]
+disabled = true
+
+[git_commit]
 disabled = true
 
 [git_status]
